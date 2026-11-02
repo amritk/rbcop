@@ -15,7 +15,16 @@ fi
 # shellcheck disable=SC2086
 rubocop() { command $rubocop_cmd "$@"; }
 # Checked from outside the repo, the way the scripts call it.
-if ! (cd / && rubocop --version) > /dev/null 2>&1; then
-  echo "$0: RuboCop does not run as '$rubocop_cmd'; set RUBOCOP (e.g. RUBOCOP=\"rbenv exec rubocop\" RBENV_VERSION=4.0.6)" >&2
+if ! rubocop_version=$(cd / && rubocop --version 2> /dev/null); then
+  echo "$0: RuboCop does not run as '$rubocop_cmd'; set RUBOCOP (e.g. RUBOCOP=~/rubocop-1.92.2/bin/rubocop)" >&2
+  exit 1
+fi
+# And it is the release rbcop targets (src/config/mod.rs RUBOCOP_VERSION), so an older RuboCop
+# never records oracles or passes a live gate. Moving to a new release
+# (docs/upgrading-rubocop.md), set RUBOCOP_EXPECTED to it.
+rubocop_expected=${RUBOCOP_EXPECTED:-$(sed -n 's/^pub const RUBOCOP_VERSION: &str = "\(.*\)";$/\1/p' "$rubocop_root/src/config/mod.rs")}
+rubocop_version=$(echo "$rubocop_version" | head -n 1)
+if [ "$rubocop_version" != "$rubocop_expected" ]; then
+  echo "$0: '$rubocop_cmd' is RuboCop $rubocop_version, not $rubocop_expected (set RUBOCOP, or RUBOCOP_EXPECTED when upgrading)" >&2
   exit 1
 fi

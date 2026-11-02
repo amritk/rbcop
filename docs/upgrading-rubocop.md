@@ -43,7 +43,7 @@ Then measure what reaches real code: record the new release's oracles into scrat
 gate's oracle dirs) and rerun the script with both oracle dirs:
 
     for c in specs rails discourse rubocop-src jekyll chef fastlane brew mastodon; do
-      RUBOCOP="$NEW" scripts/oracle.sh $RBCOP_CORPUS/$c $S/oracle/$c.txt
+      RUBOCOP="$NEW" RUBOCOP_EXPECTED=X.Y.Z scripts/oracle.sh $RBCOP_CORPUS/$c $S/oracle/$c.txt
     done
     ruby scripts/rubocop_delta.rb $OLD $S/gems/gems/rubocop-X.Y.Z notes.md $RBCOP_ORACLE $S/oracle > delta.tsv
 
@@ -73,7 +73,9 @@ corpus (step 4) and targeted cases to catch. Commit the final `delta.tsv` and `d
 
 ## 4. Re-record
 
-All with `RUBOCOP="$NEW"`, so nothing records with the old release by accident:
+All with `RUBOCOP="$NEW"` (and `RUBOCOP_EXPECTED=X.Y.Z` until `RUBOCOP_VERSION` in
+`src/config/mod.rs` names the new release: `scripts/rubocop.sh` refuses any other version), so
+nothing records with the old release by accident:
 
 - `tests/spec_corpus`: `scripts/record-spec-corpus.sh <rubocop-src checkout at vX.Y.Z>` (clone into
   scratch, `git -C <dir> checkout vX.Y.Z`; the corpus copy of rubocop-src stays as it is).

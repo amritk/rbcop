@@ -21,7 +21,7 @@ The target is byte-identical output: same offenses, ranges, messages, `[Correcta
 ## Build
 
 ```sh
-cargo build --release   # needs Rust 1.89 or newer
+cargo build --release   # needs Rust 1.89 or newer and libclang (e.g. libclang-dev), for bindgen
 ```
 
 The binary is `target/release/rbcop`. The crate is not published to crates.io: it builds against a patched copy of `ruby-prism` in `vendor/ruby-prism`.
@@ -39,7 +39,7 @@ rbcop -f json -o report.json
 
 All builtin formatters are supported, as are the display options, `--fail-level`, `--stdin` (with `-a`/`-A` it prints the corrected source after the report), `-L`, `--show-cops`, `-v` and `-V`.
 
-`--auto-gen-config` (with its options), `--regenerate-todo`, `--disable-uncorrectable` and `--report-unused-todo-entries` are supported. The server options are accepted and run in process (no server is started), and `--lsp` runs RuboCop's language server. Not supported: `--changed` and the MCP mode. Plugin and custom cops rbcop does not implement, `-r`/`--plugin` and custom formatter classes run with RuboCop when one is installed (see [Plugins and custom cops](#plugins-and-custom-cops)). ERB in config files is rendered by running `ruby`, as RuboCop renders it, and remote `inherit_from` URLs are fetched as RuboCop fetches them. The result cache (`--cache`, `--cache-root`, `AllCops: UseCache`) works as RuboCop's, in its own `rbcop_cache` directory. [docs/known-gaps.md](docs/known-gaps.md) lists these and every other known difference, including a few deliberate ones (for example, `-o` pointing at a file being inspected is refused). `-a`/`-A` do not write files that resolve (through symlinks) outside the working directory and the paths given on the command line; those are reported uncorrected with a warning.
+`--auto-gen-config` (with its options), `--regenerate-todo`, `--disable-uncorrectable` and `--report-unused-todo-entries` are supported. The server options are accepted and run in process (no server is started), `--lsp` runs RuboCop's language server, `--mcp` its MCP server, and `--changed` limits the run to files git reports as changed. Plugin and custom cops rbcop does not implement, `-r`/`--plugin` and custom formatter classes run with RuboCop when one is installed (see [Plugins and custom cops](#plugins-and-custom-cops)). ERB in config files is rendered by running `ruby`, as RuboCop renders it, and remote `inherit_from` URLs are fetched as RuboCop fetches them. The result cache (`--cache`, `--cache-root`, `AllCops: UseCache`) works as RuboCop's, in its own `rbcop_cache` directory. [docs/known-gaps.md](docs/known-gaps.md) lists these and every other known difference, including a few deliberate ones (for example, `-o` pointing at a file being inspected is refused). `-a`/`-A` do not write files that resolve (through symlinks) outside the working directory and the paths given on the command line; those are reported uncorrected with a warning.
 
 ## Plugins and custom cops
 
@@ -104,10 +104,9 @@ rbcop with a warm result cache (an unchanged tree, as RuboCop's cache serves it)
 ## Gates
 
 ```sh
-cargo fmt --check
-cargo clippy --release --all-targets -- -D warnings
-cargo test --release
-RBCOP_CORPUS=<corpus dir> RBCOP_ORACLE=<oracle dir> scripts/verify.sh   # the above plus check-cops.sh all
+scripts/ci.sh   # cargo fmt --check, clippy -D warnings, cargo build and cargo test (all --release --locked)
+RBCOP_CORPUS=<corpus dir> RBCOP_ORACLE=<oracle dir> RUBOCOP=<rubocop 1.92.2> scripts/ci.sh
+                # the above plus check-cops.sh all, check-cold.sh and check-plugins.sh
 ```
 
 `cargo test` replays recorded RuboCop output: every cop's RuboCop spec examples with their config variants, offenses and `-A` results (`tests/spec_corpus`, recorded by `scripts/record-spec-corpus.sh`), config scenarios (`tests/scenarios`), formatter and CLI goldens (`tests/formatters`), `--show-cops` (`tests/show_cops`) and autocorrect cases (`tests/autocorrect`). The scripts that record them (`scripts/record-spec-corpus.sh`, `scripts/scenarios.sh`, `scripts/formatters.sh`, `scripts/show-cops.sh`, `tests/autocorrect/record.sh`) and the oracle, autocorrect and cold-corpus gates need RuboCop 1.92.2 as `$RUBOCOP` or on `PATH`. Each script's header documents its arguments and environment.
