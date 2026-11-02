@@ -951,6 +951,27 @@ const EXPR_CMDARG: u32 = 0x20;
 /// States after which a newline is skipped (EXPR_BEG | EXPR_FNAME | EXPR_DOT | EXPR_CLASS).
 const NEWLINE_IGNORED: u32 = 0x1 | 0x80 | 0x100 | 0x200;
 
+/// Trailing comments the parser gem lexes without a tNL after them, by COMMENT start offset: the
+/// lexer state skips the newline (`foo( # c`, `x = # c`, `begin # c`), so the expression goes on
+/// on the next line. Prism's translation lexer (3.3+) emits a tNL there. A cheap pass on the
+/// state before each comment finds the candidates; `convert` decides only for files that have one.
+pub fn comments_without_newline(tokens: &[Token], text: &str, target: f64) -> Vec<usize> {
+    let mut state = EXPR_BEG;
+    let mut candidates = Vec::new();
+    for t in tokens {
+        match t.kind {
+            "COMMENT" if state & NEWLINE_IGNORED != 0 && text[t.start..t.end].ends_with('\n') => candidates.push(t),
+            "COMMENT" | "EMBDOC_BEGIN" | "EMBDOC_LINE" | "EMBDOC_END" => {}
+            _ => state = t.state,
+        }
+    }
+    if candidates.is_empty() {
+        return Vec::new();
+    }
+    let newlines: std::collections::HashSet<usize> = newline_offsets(tokens, text, target).into_iter().collect();
+    candidates.into_iter().filter(|t| !newlines.contains(&(t.end - 1))).map(|t| t.start).collect()
+}
+
 /// Prism's tokens converted the way Prism::Translation::Parser::Lexer#to_a does for the parts the
 /// grammar's error positions depend on (string/symbol merging, `(` and `{` kinds), followed by `$end`.
 /// The offsets of the parser gem's tNL tokens (`convert`). After a `\` continuation and a comment

@@ -766,6 +766,9 @@ fn investigate(
     if cfg.target_ruby < 2.7 {
         src.numbered_sends = crate::syntax::legacy_numbered_sends(&result.node());
     }
+    if parser_gem {
+        src.gem_silent_comments = crate::legacy_syntax::comments_without_newline(&tokens, text, cfg.target_ruby);
+    }
     if parser_gem && text.contains("\\\n") {
         src.gem_newlines = crate::legacy_syntax::newline_offsets(&tokens, text, cfg.target_ruby);
     }
