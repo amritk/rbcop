@@ -1,0 +1,5 @@
+AllCops:
+  NewCops: disable
+  Exclude:
+    - drop.rb
+    - gone.rb
