@@ -452,7 +452,7 @@ impl Json {
     }
 
     pub fn parse(s: &str) -> Result<Json, String> {
-        let mut p = Parser { s: s.as_bytes(), i: 0 };
+        let mut p = Parser { s: s.as_bytes(), i: 0, depth: 0 };
         let v = p.value()?;
         p.ws();
         if p.i != p.s.len() {
@@ -462,9 +462,14 @@ impl Json {
     }
 }
 
+/// Ruby's JSON.parse default `max_nesting`: deeper input is a parse error, not a stack overflow.
+const MAX_NESTING: usize = 100;
+
 struct Parser<'a> {
     s: &'a [u8],
     i: usize,
+    /// Arrays and objects open around the current position.
+    depth: usize,
 }
 
 impl Parser<'_> {
@@ -477,6 +482,10 @@ impl Parser<'_> {
     /// The four hex digits of a `\u` escape.
     fn hex4(&mut self) -> Result<u32, String> {
         let h = self.s.get(self.i..self.i + 4).ok_or_else(|| format!("incomplete unicode escape at {}", self.i))?;
+        // from_str_radix alone would take a sign (`\u+041`).
+        if !h.iter().all(u8::is_ascii_hexdigit) {
+            return Err(format!("invalid unicode escape at {}", self.i));
+        }
         self.i += 4;
         u32::from_str_radix(std::str::from_utf8(h).map_err(|e| e.to_string())?, 16).map_err(|e| e.to_string())
     }
@@ -491,6 +500,54 @@ impl Parser<'_> {
 
     fn value(&mut self) -> Result<Json, String> {
         self.ws();
+        if matches!(self.s.get(self.i), Some(b'{' | b'[')) {
+            if self.depth == MAX_NESTING {
+                return Err(format!("nesting of {} is too deep", MAX_NESTING + 1));
+            }
+            self.depth += 1;
+            let v = self.scalar_or_nested();
+            self.depth -= 1;
+            return v;
+        }
+        self.scalar_or_nested()
+    }
+
+    /// The digits at the current position (at least one), or None.
+    fn digits(&mut self) -> Option<()> {
+        let start = self.i;
+        while self.s.get(self.i).is_some_and(u8::is_ascii_digit) {
+            self.i += 1;
+        }
+        (self.i > start).then_some(())
+    }
+
+    /// RFC 8259 `number`: `-? (0 | [1-9][0-9]*) (. [0-9]+)? ([eE] [+-]? [0-9]+)?`.
+    fn number(&mut self) -> Option<()> {
+        self.eat("-");
+        if !self.eat("0") {
+            if !self.s.get(self.i).is_some_and(|c| (b'1'..=b'9').contains(c)) {
+                return None;
+            }
+            self.digits()?;
+        }
+        if self.eat(".") {
+            self.digits()?;
+        }
+        if self.s.get(self.i).is_some_and(|c| matches!(c, b'e' | b'E')) {
+            self.i += 1;
+            if !self.eat("+") {
+                self.eat("-");
+            }
+            self.digits()?;
+        }
+        // `01`, `1-2`: a number directly followed by more number characters.
+        if self.s.get(self.i).is_some_and(|c| matches!(c, b'0'..=b'9' | b'.' | b'e' | b'E' | b'+' | b'-')) {
+            return None;
+        }
+        Some(())
+    }
+
+    fn scalar_or_nested(&mut self) -> Result<Json, String> {
         let err = |i: usize| format!("unexpected token at {i}");
         match self.s.get(self.i) {
             Some(b'{') => {
@@ -585,10 +642,7 @@ impl Parser<'_> {
             }
             Some(b'-' | b'0'..=b'9') => {
                 let start = self.i;
-                self.i += 1;
-                while self.s.get(self.i).is_some_and(|c| matches!(c, b'0'..=b'9' | b'.' | b'e' | b'E' | b'+' | b'-')) {
-                    self.i += 1;
-                }
+                self.number().ok_or_else(|| err(start))?;
                 Ok(Json::Num(String::from_utf8_lossy(&self.s[start..self.i]).into_owned()))
             }
             _ if self.eat("true") => Ok(Json::Bool(true)),
@@ -609,6 +663,23 @@ mod tests {
         let j = Json::parse(s).unwrap();
         assert_eq!(j.text(), "{\"b\":0,\"a\":{\"x\":\"ü😀\\n\\\"/\"}}");
         assert!(Json::parse("{bad}").is_err());
+    }
+
+    /// Ruby's JSON.parse: max_nesting 100, RFC 8259 numbers, four hex digits per `\u`.
+    #[test]
+    fn json_rejects_what_ruby_rejects() {
+        let nested = |n: usize| format!("{}{}", "[".repeat(n), "]".repeat(n));
+        assert!(Json::parse(&nested(100)).is_ok());
+        assert!(Json::parse(&nested(101)).is_err());
+        // Far past the old stack overflow: an error, not an abort.
+        assert!(Json::parse(&"[".repeat(1_000_000)).is_err());
+        assert!(Json::parse(&format!("{}1{}", r#"{"a":"#.repeat(101), "}".repeat(101))).is_err());
+        for bad in ["[01]", "[1-2]", "[-]", "[1.]", "[1e]", "[.5]", "[+1]", r#"["\u+041"]"#] {
+            assert!(Json::parse(bad).is_err(), "{bad}");
+        }
+        for good in ["[0]", "[-0.5e+3]", "[1E-2]", "[10]", r#"["é"]"#] {
+            assert!(Json::parse(good).is_ok(), "{good}");
+        }
     }
 
     #[test]

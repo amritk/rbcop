@@ -51,6 +51,10 @@ rbcop pins and refuses there (and nothing beyond it):
 - The MCP tools refuse to read or write a path whose canonical form is under that git dir or
   common dir, has a `.git`, `.hg`, `.svn` or `.jj` component, or is named `.gitattributes` (any
   case).
+- The MCP tools refuse to write configuration rbcop would evaluate on a later call: any `.yml` or
+  `.yaml` file (a `.rubocop.yml`, or anything one inherits from, has its ERB rendered by `ruby`)
+  and the `.rubocop` options file (`tests/mcp.rs`). Ruby files, Gemfile and gemspecs included, are
+  written as RuboCop writes them.
 - `--changed` on the command line (the user's own repository) stays best effort: it is not pinned,
   needs no particular git version and does not read attributes from the empty tree.
 
