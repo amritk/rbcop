@@ -1,5 +1,7 @@
 # rbcop
 
+<p align="center"><img src="docs/rbcop.jpg" alt="rbcop logo: a rust-colored shield with a ruby" width="480"></p>
+
 Drop-in replacement for RuboCop 1.92.2. Same config, same command line, same output, [about 14x faster](#speed) than `rubocop --parallel` in CI.
 
 `gem "rbcop", require: false`, then `bundle exec rbcop`.
