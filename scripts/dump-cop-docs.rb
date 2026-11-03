@@ -4,7 +4,9 @@
 # from the comment above each cop class) for RuboCop's cops and the native plugins' cops, as
 # src/cop_docs.txt for src/explain.rs. Run with the target RuboCop release and the plugin pins of
 # docs/plugins.md on the load path:
-#   RBENV_VERSION=4.0.6 ruby scripts/dump-cop-docs.rb > src/cop_docs.txt
+#   LC_ALL=C.UTF-8 RBENV_VERSION=4.0.6 ruby scripts/dump-cop-docs.rb > src/cop_docs.txt
+# A UTF-8 locale is needed: under C/POSIX the cop sources read as US-ASCII and the first non-ASCII
+# comment raises, leaving a truncated file.
 # Format, one record per line: `C name` starts a cop, `S title` a section, `L text` a body line.
 require 'rubocop'
 %w[rubocop-performance rubocop-rails rubocop-minitest rubocop-rspec rubocop-rspec_rails

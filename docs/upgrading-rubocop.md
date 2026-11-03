@@ -67,7 +67,10 @@ corpus (step 4) and targeted cases to catch. Commit the final `delta.tsv` and `d
 - Regenerated tables: `src/autocorrect/registry.tsv` (`scripts/autocorrect_registry.rb`, registry
   order and `autocorrect_incompatible_with`), `src/helpers/ruby_exceptions.rs`
   (`scripts/dump-ruby-exceptions.rb`), `src/helpers/nil_methods.rs` and the display width table when
-  their gems move.
+  their gems move, and `src/cop_docs.txt` (what `--explain` prints: `LC_ALL=C.UTF-8 ruby
+  scripts/dump-cop-docs.rb > src/cop_docs.txt` with the new release and the plugin pins of
+  docs/plugins.md on the load path). 1.92.2 changed only the docs of Lint/PercentStringArray and
+  Style/CaseEquality, and the 1.92.2 upgrade missed them.
 - Behaviour the new release drops on purpose may already be listed in docs/known-gaps.md as a
   difference from the old one: re-check every entry that names the old version.
 
