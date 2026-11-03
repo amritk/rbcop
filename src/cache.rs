@@ -49,7 +49,16 @@ pub fn digest(parts: &[&[u8]]) -> String {
 
 /// The entry layout, part of the build digest: entries of another layout are never read.
 /// 2: each offense line carries its corrections (RuboCop 1.92.2's Offense#corrections).
-const FORMAT: &[u8] = b"format 2";
+/// Which text a saved report's offsets index (one hash pass: it only tells texts of the same
+/// length apart).
+fn text_check(text: &str) -> String {
+    let mut h = std::hash::DefaultHasher::new();
+    h.write(text.as_bytes());
+    format!("{:016x}", h.finish())
+}
+
+/// Format 3: the first line holds the saved text's digest as well as its length.
+const FORMAT: &[u8] = b"format 3";
 
 /// One saved offense's corrections: `-`, or `begin,end,hex(replacement)` joined by `;`. None when
 /// malformed or outside `0..=len`, or not on char boundaries of `text`.
@@ -139,12 +148,15 @@ impl Cache {
             fs::OpenOptions::new().read(true).custom_flags(libc::O_NOFOLLOW).open(self.dir.join(key)).ok()?;
         file.read_to_string(&mut data).ok()?;
         let mut lines = data.split('\n');
-        let text_len: usize = lines.next()?.parse().ok()?;
+        let (text_len, text_digest) = lines.next()?.split_once(' ')?;
+        let text_len: usize = text_len.parse().ok()?;
         // runner::inspect_bytes keeps the source as read for an encoding error, else with CRLF
-        // normalised; the saved length tells which.
+        // normalised; the saved length and digest tell which. A file transcoded from its magic
+        // comment's encoding is neither (a lossy reading can even have the same length, with other
+        // characters): a miss, never offsets into the wrong text.
         let raw = String::from_utf8_lossy(bytes).into_owned();
         let text = if raw.len() == text_len { raw } else { raw.replace("\r\n", "\n") };
-        if text.len() != text_len {
+        if text.len() != text_len || text_check(&text) != text_digest {
             return None;
         }
         let mut offenses = Vec::new();
@@ -191,7 +203,7 @@ impl Cache {
         if let Some(link) = self.refused_symlink(&self.dir) {
             return eprintln!("Warning: {} is a symlink, which is not allowed.", link.display());
         }
-        let mut out = format!("{}\n", report.text.len());
+        let mut out = format!("{} {}\n", report.text.len(), text_check(&report.text));
         for o in &report.offenses {
             let flags = format!("{}{}{}", u8::from(o.correctable), u8::from(o.global), u8::from(o.disabled));
             let mut message = escape(&o.message);
@@ -380,11 +392,17 @@ mod tests {
         cache.save("k", &report, true);
         let loaded = cache.load("k", text.as_bytes()).unwrap();
         assert_eq!(loaded.offenses[0].edits, report.offenses[0].edits);
-        let entry = |body: &str| {
-            fs::write(cache.entry("k"), format!("{}\n{body}\n", text.len())).unwrap();
+        let header = format!("{} {}", text.len(), text_check(text));
+        let entry_with = |header: &str, body: &str| {
+            fs::write(cache.entry("k"), format!("{header}\n{body}\n")).unwrap();
             cache.load("k", text.as_bytes()).map(|r| r.offenses.len())
         };
+        let entry = |body: &str| entry_with(&header, body);
         assert_eq!(entry("6 7 convention 100 Style/X - m"), Some(1));
+        // The saved text's hash must match the text rebuilt from the file, and be there at all.
+        let ok = "6 7 convention 100 Style/X - m";
+        assert_eq!(entry_with(&format!("{} {}", text.len(), "0".repeat(16)), ok), None);
+        assert_eq!(entry_with(&text.len().to_string(), ok), None);
         // Truncated or garbage lines, bad hex, and edits outside the source or inside a character.
         for bad in [
             "6 7 convention 100 Style/X",

@@ -255,3 +255,25 @@ fn output_changing_flags_key_the_cache() {
     }
     let _ = fs::remove_dir_all(&dir);
 }
+
+/// A file transcoded from its magic comment's encoding is cached as UTF-8 text the bytes on disk
+/// do not spell. Here a lossy reading of the ISO-8859-1 bytes `C3 A9 E9 E9` has the transcoded
+/// text's length (8 bytes) but other characters: a warm run must not place offsets in it.
+#[test]
+fn transcoded_source_is_never_rebuilt_from_its_length() {
+    let dir = project("transcoded");
+    fs::write(
+        dir.join("lib/latin1.rb"),
+        b"# encoding: iso-8859-1\n# frozen_string_literal: true\n\nputs \"\xC3\xA9\xE9\xE9\"  \n",
+    )
+    .unwrap();
+    let base = rbcop(&dir, &["--cache", "false", "-f", "emacs", "lib/latin1.rb"]);
+    assert!(
+        String::from_utf8_lossy(&base.stdout).contains("4:12: C: [Correctable] Layout/TrailingWhitespace"),
+        "{base:?}"
+    );
+    for run in ["cold", "warm"] {
+        assert_same(&base, &rbcop(&dir, &["-f", "emacs", "lib/latin1.rb"]), run);
+    }
+    let _ = fs::remove_dir_all(&dir);
+}

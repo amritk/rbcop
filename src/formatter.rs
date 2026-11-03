@@ -115,9 +115,19 @@ impl Off {
     }
 }
 
+/// `off` clamped to the text and moved back to a char boundary, as `Positions::pos` places it: an
+/// offset inside a multibyte character counts as that character's start, never a panic.
+fn char_floor(text: &str, off: usize) -> usize {
+    let mut off = off.min(text.len());
+    while !text.is_char_boundary(off) {
+        off -= 1;
+    }
+    off
+}
+
 /// 1-based (line, character column) of a byte offset, as RuboCop prints positions.
 pub fn line_col(text: &str, off: usize) -> (usize, usize) {
-    let off = off.min(text.len());
+    let off = char_floor(text, off);
     let line_start = text[..off].rfind('\n').map_or(0, |i| i + 1);
     (text[..off].matches('\n').count() + 1, text[line_start..off].chars().count() + 1)
 }
@@ -130,7 +140,7 @@ pub fn line_starts(text: &str) -> Vec<usize> {
 /// `line_col` with the line starts of `text` indexed once (`line_starts`): no rescan of the text
 /// before `off` per lookup.
 pub fn line_col_at(text: &str, starts: &[usize], off: usize) -> (usize, usize) {
-    let off = off.min(text.len());
+    let off = char_floor(text, off);
     let line = starts.partition_point(|&s| s <= off);
     (line, text[starts[line - 1]..off].chars().count() + 1)
 }
@@ -794,6 +804,20 @@ pub fn docs_url(config: &crate::config::Resolved, cop: &str) -> Option<String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// An offset inside a multibyte character (allowed by `Positions`) counts as that character's
+    /// start in every lookup: `-a`'s dedupe and sort used to panic slicing there.
+    #[test]
+    fn line_col_inside_a_multibyte_character() {
+        let text = "x\naé b\n";
+        let starts = line_starts(text);
+        for off in [3, 4, 5] {
+            let want = if off == 5 { (2, 3) } else { (2, 2) };
+            assert_eq!(line_col(text, off), want, "{off}");
+            assert_eq!(line_col_at(text, &starts, off), want, "{off}");
+        }
+        assert_eq!(line_col(text, 99), (3, 1));
+    }
 
     #[test]
     fn backticks() {
