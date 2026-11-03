@@ -8,7 +8,7 @@ Worklist for #299 on `feat/rubocop-1.92.1`, taken 2026-10-26 at the base commit 
 `RUBOCOP_VERSION` to 1.92.1, vendors 1.92.1's `config/default.yml` and re-records every expectation
 with RuboCop 1.92.1 (no cop ports yet). Port PRs target `feat/rubocop-1.92.1`; the branch merges to
 master once everything here is green. Process: docs/upgrading-rubocop.md. Delta inventory:
-docs/upgrade-1.92.1.tsv (cops) and docs/upgrade-1.92.1-lib.tsv (everything else).
+docs/history/upgrade-1.92.1.tsv (cops) and docs/history/upgrade-1.92.1-lib.tsv (everything else).
 
 ## How this was measured
 
@@ -70,7 +70,7 @@ the code was ported from and move with the port of that module.
 
 ## Cop batches
 
-Cops are the inventory rows (docs/upgrade-1.92.1.tsv), split by department into batches of about
+Cops are the inventory rows (docs/history/upgrade-1.92.1.tsv), split by department into batches of about
 equal work (lib lines changed, failing spec variants, corpus diffs). "corpus" is offenses only in
 RuboCop / only in rbcop over the nine corpora. Mixins and correctors used by several batches are in
 L6 and L7; a batch that needs one first coordinates with that batch.
@@ -331,7 +331,7 @@ L6 and L7; a batch that needs one first coordinates with that batch.
 
 ## Non-cop batches
 
-Files are RuboCop's (`lib/rubocop/...`, lines changed from docs/upgrade-1.92.1-lib.tsv); the rbcop
+Files are RuboCop's (`lib/rubocop/...`, lines changed from docs/history/upgrade-1.92.1-lib.tsv); the rbcop
 side is in docs/upgrading-rubocop.md step 3.
 
 ### Batch L1: command line, options, `--explain`

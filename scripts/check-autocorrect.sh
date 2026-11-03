@@ -60,9 +60,18 @@ for c in $corpora; do
       cp "$f" "$dir/$side/$f"
     done
   done) < "$dir/files"
+  rc=0
   (cd "$dir/rubocop" && rubocop "$mode" $only $cfg_args \
-    --cache false --format emacs . > ../rubocop.out 2> ../rubocop.err) || true
-  (cd "$dir/rbcop" && "$bin" "$mode" $only $cfg_args --format emacs . > ../rbcop.out 2> ../rbcop.err) || true
+    --cache false --format emacs . > ../rubocop.out 2> ../rubocop.err) || rc=$?
+  rb=0
+  (cd "$dir/rbcop" && "$bin" "$mode" $only $cfg_args --format emacs . > ../rbcop.out 2> ../rbcop.err) || rb=$?
+  # 1 is "offenses remain"; 2 and above is an error (a bad CONFIG, an unknown cop, a crash). Both
+  # failing alike would otherwise compare as a match.
+  if [ "$rc" -ge 2 ] || [ "$rb" -ge 2 ]; then
+    echo "check-autocorrect: $c: rubocop exited $rc, rbcop $rb (see $dir/{rubocop,rbcop}.err)" >&2
+    status=1
+    continue
+  fi
   # Both tools print physical paths (getcwd), e.g. /private/var on macOS.
   phys=$(cd "$dir" && pwd -P)
   sed "s|^$phys/rubocop/||; s|^$dir/rubocop/||" "$dir/rubocop.out" | LC_ALL=C sort > "$dir/rubocop.norm"

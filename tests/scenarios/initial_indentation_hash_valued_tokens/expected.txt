@@ -1,0 +1,39 @@
+Gemfile:1:1: W: Lint/EmptyFile: Empty file detected.
+s1.rb:1:1: C: [Correctable] Style/FrozenStringLiteralComment: Missing frozen string literal comment.
+s1.rb:1:1: C: [Correctable] Style/StringConcatenation: Prefer string interpolation to string concatenation.
+s1.rb:1:1: C: [Correctable] Style/StringLiterals: Prefer single-quoted strings when you don't need string interpolation or special symbols.
+s1.rb:1:5: C: [Correctable] Layout/InitialIndentation: Indentation of first line in file detected.
+s10.rb:1:1: C: [Correctable] Style/FrozenStringLiteralComment: Missing frozen string literal comment.
+s10.rb:1:1: C: [Correctable] Style/RedundantInterpolation: Prefer `to_s` over string interpolation.
+s11.rb:1:1: C: [Correctable] Style/FrozenStringLiteralComment: Missing frozen string literal comment.
+s11.rb:1:1: C: [Correctable] Style/StringConcatenation: Prefer string interpolation to string concatenation.
+s11.rb:1:8: C: [Correctable] Layout/InitialIndentation: Indentation of first line in file detected.
+s12.rb:1:10: C: [Correctable] Layout/InitialIndentation: Indentation of first line in file detected.
+s12.rb:1:1: C: [Correctable] Style/FrozenStringLiteralComment: Missing frozen string literal comment.
+s12.rb:1:1: C: [Correctable] Style/StringConcatenation: Prefer string interpolation to string concatenation.
+s13.rb:1:10: C: [Correctable] Layout/InitialIndentation: Indentation of first line in file detected.
+s13.rb:1:1: C: [Correctable] Style/FrozenStringLiteralComment: Missing frozen string literal comment.
+s13.rb:1:1: C: [Correctable] Style/StringConcatenation: Prefer string interpolation to string concatenation.
+s2.rb:1:1: C: [Correctable] Style/FrozenStringLiteralComment: Missing frozen string literal comment.
+s2.rb:1:1: C: [Correctable] Style/StringConcatenation: Prefer string interpolation to string concatenation.
+s2.rb:1:5: C: [Correctable] Layout/InitialIndentation: Indentation of first line in file detected.
+s3.rb:1:1: C: [Correctable] Style/FrozenStringLiteralComment: Missing frozen string literal comment.
+s3.rb:1:1: C: [Correctable] Style/StringConcatenation: Prefer string interpolation to string concatenation.
+s3.rb:1:6: C: [Correctable] Layout/InitialIndentation: Indentation of first line in file detected.
+s4.rb:1:1: C: [Correctable] Style/FrozenStringLiteralComment: Missing frozen string literal comment.
+s4.rb:1:1: C: [Correctable] Style/StringConcatenation: Prefer string interpolation to string concatenation.
+s5.rb:1:1: C: [Correctable] Style/FrozenStringLiteralComment: Missing frozen string literal comment.
+s5.rb:1:1: C: [Correctable] Style/StringConcatenation: Prefer string interpolation to string concatenation.
+s5.rb:1:8: C: [Correctable] Layout/InitialIndentation: Indentation of first line in file detected.
+s6.rb:1:1: C: [Correctable] Style/FrozenStringLiteralComment: Missing frozen string literal comment.
+s6.rb:1:1: C: [Correctable] Style/RedundantPercentQ: Use `%q` only for strings that contain both single quotes and double quotes.
+s6.rb:1:1: C: [Correctable] Style/StringConcatenation: Prefer string interpolation to string concatenation.
+s7.rb:1:1: C: [Correctable] Style/FrozenStringLiteralComment: Missing frozen string literal comment.
+s7.rb:1:1: C: [Correctable] Style/StringConcatenation: Prefer string interpolation to string concatenation.
+s8.rb:1:1: C: [Correctable] Style/CharacterLiteral: Do not use the character literal - use string literal instead.
+s8.rb:1:1: C: [Correctable] Style/FrozenStringLiteralComment: Missing frozen string literal comment.
+s8.rb:1:1: C: [Correctable] Style/StringConcatenation: Prefer string interpolation to string concatenation.
+s8.rb:1:4: C: [Correctable] Layout/InitialIndentation: Indentation of first line in file detected.
+s9.rb:1:1: C: [Correctable] Style/FrozenStringLiteralComment: Missing frozen string literal comment.
+s9.rb:1:1: C: [Correctable] Style/StringConcatenation: Prefer string interpolation to string concatenation.
+s9.rb:1:1: C: [Correctable] Style/StringLiterals: Prefer single-quoted strings when you don't need string interpolation or special symbols.

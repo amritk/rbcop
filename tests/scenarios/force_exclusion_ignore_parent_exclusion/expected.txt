@@ -1,0 +1,6 @@
+sub/keep.rb:1:1: C: [Correctable] Style/FrozenStringLiteralComment: Missing frozen string literal comment.
+sub/keep.rb:1:1: W: [Correctable] Lint/UselessAssignment: Useless assignment to variable - `x`.
+sub/keep.rb:1:2: C: [Correctable] Layout/SpaceAroundOperators: Surrounding space missing for operator `=`.
+top.rb:1:1: C: [Correctable] Style/FrozenStringLiteralComment: Missing frozen string literal comment.
+top.rb:1:1: W: [Correctable] Lint/UselessAssignment: Useless assignment to variable - `y`.
+top.rb:1:2: C: [Correctable] Layout/SpaceAroundOperators: Surrounding space missing for operator `=`.

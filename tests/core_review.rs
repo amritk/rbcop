@@ -1708,6 +1708,11 @@ fn gate_scripts_fail_without_a_binary_or_cops() {
     fs::create_dir_all(stubs.join("release")).unwrap();
     fs::write(stubs.join("cargo"), "#!/bin/sh\nexit 0\n").unwrap();
     fs::set_permissions(stubs.join("cargo"), fs::Permissions::from_mode(0o755)).unwrap();
+    // compare.sh checks RuboCop before the binary: a stub of the targeted release keeps the test
+    // independent of whether RuboCop is installed.
+    let stub_rubocop = stubs.join("rubocop-stub");
+    fs::write(&stub_rubocop, format!("#!/bin/sh\necho {}\n", rbcop::config::RUBOCOP_VERSION)).unwrap();
+    fs::set_permissions(&stub_rubocop, fs::Permissions::from_mode(0o755)).unwrap();
     let path = format!("{}:{}", stubs.display(), std::env::var("PATH").unwrap_or_default());
     let run = |script: &str, args: &[&str]| {
         let out = std::process::Command::new("sh")
@@ -1715,6 +1720,8 @@ fn gate_scripts_fail_without_a_binary_or_cops() {
             .args(args)
             .env("PATH", &path)
             .env("CARGO_TARGET_DIR", &stubs)
+            .env("RUBOCOP", &stub_rubocop)
+            .env_remove("RUBOCOP_EXPECTED")
             .env("RBCOP_CORPUS", &dir)
             .env("RBCOP_ORACLE", &dir)
             .current_dir(&dir)

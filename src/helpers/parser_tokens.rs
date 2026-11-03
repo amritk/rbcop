@@ -238,7 +238,10 @@ fn translate(src: &Source) -> Vec<Token> {
             PM_TOKEN_COMMENT => {
                 let at_eol = !value.ends_with(b"\n");
                 let comment = tok(PM_TOKEN_COMMENT, t.start, if at_eol { t.end } else { t.end - 1 });
-                let inline = i >= 2 && src.line_of(raw[i - 2].start) == src.line_of(t.start);
+                // Below 3.3 the parser gem has no tNL after a comment whose newline its lexer skips.
+                let inline = i >= 2
+                    && src.line_of(raw[i - 2].start) == src.line_of(t.start)
+                    && !src.gem_silent_comments.contains(&t.start);
                 let continued = matches!(next_kind, Some(PM_TOKEN_COMMENT | PM_TOKEN_AMPERSAND_DOT | PM_TOKEN_DOT));
                 out.push(comment);
                 if inline && !at_eol && !continued {

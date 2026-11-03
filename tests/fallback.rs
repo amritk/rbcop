@@ -392,7 +392,11 @@ fn same(dir: &Path, env: &[(&str, &str)], args: &[&str]) {
     }
     let ours = ours.args(args).current_dir(dir).output().unwrap();
     let theirs = theirs.args(args).current_dir(dir).output().unwrap();
-    assert_eq!(text(&ours.stdout), text(&theirs.stdout), "{env:?} {args:?}");
+    // The JSON formatter's metadata names the Ruby RuboCop runs on; rbcop names the one its
+    // recordings use (docs/known-gaps.md), so a RuboCop on another Ruby differs only there.
+    let ruby = regex::Regex::new(r#""ruby_version":"[^"]*","ruby_patchlevel":"[^"]*""#).unwrap();
+    let stdout = |o: &Output| ruby.replace_all(&text(&o.stdout), "RUBY").into_owned();
+    assert_eq!(stdout(&ours), stdout(&theirs), "{env:?} {args:?}");
     assert_eq!(text(&ours.stderr), text(&theirs.stderr), "{env:?} {args:?}");
     assert_eq!(ours.status.code(), theirs.status.code(), "{env:?} {args:?}");
 }
@@ -545,10 +549,27 @@ fn fallback_output_matches_rubocop() {
         return;
     }
     let dir = project("report");
+    // ruby-progressbar skips a redraw less than 10 ms after the previous one, so whether fuubar
+    // prints an intermediate `Progress: |===` before a file's offenses depends on how fast RuboCop
+    // inspected the file before it; rbcop never throttles (src/formatter/text.rs). Those redraws are
+    // compared as empty lines; the offenses, the line breaks and the final full bar stay exact.
+    let unthrottled = |s: String| {
+        s.split_inclusive('\n')
+            .map(|l| {
+                let bar = l.trim_end_matches('\n').strip_prefix("Progress: |");
+                if bar.is_some_and(|b| b.bytes().all(|c| c == b'=')) { "\n" } else { l }
+            })
+            .collect::<String>()
+    };
     for format in ["simple", "emacs", "clang", "progress", "fuubar"] {
         let ours = rbcop(&dir, true, &["-f", format]);
         let theirs = rubocop(&dir, &["--cache", "false", "-f", format]);
-        assert_eq!(text(&ours.stdout), text(&theirs.stdout), "{format}");
+        let (ours_out, theirs_out) = if format == "fuubar" {
+            (unthrottled(text(&ours.stdout)), unthrottled(text(&theirs.stdout)))
+        } else {
+            (text(&ours.stdout), text(&theirs.stdout))
+        };
+        assert_eq!(ours_out, theirs_out, "{format}");
         assert_eq!(ours.status.code(), theirs.status.code(), "{format}");
         assert!(ours.stderr.is_empty(), "{}", text(&ours.stderr));
     }

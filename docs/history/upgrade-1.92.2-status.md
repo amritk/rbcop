@@ -8,8 +8,8 @@ the base commit, not master.
 Worklist for #299 on `feat/rubocop-1.92.2`, taken 2026-10-29 at the base commit that bumps
 `RUBOCOP_VERSION` to 1.92.2 and re-records every expectation with RuboCop 1.92.2 (no cop ports yet).
 Port PRs target `feat/rubocop-1.92.2`; the branch merges to master once everything here is green.
-Process: docs/upgrading-rubocop.md. Delta inventory: docs/upgrade-1.92.2.tsv (cops) and
-docs/upgrade-1.92.2-lib.tsv (everything else).
+Process: docs/upgrading-rubocop.md. Delta inventory: docs/history/upgrade-1.92.2.tsv (cops) and
+docs/history/upgrade-1.92.2-lib.tsv (everything else).
 
 ## The delta
 

@@ -226,3 +226,54 @@ fn project_index_change_invalidates() {
     assert!(out.contains("Method `Base#get_name` is defined at both b.rb:5 and a.rb:5."), "{out}");
     let _ = fs::remove_dir_all(&dir);
 }
+
+/// `--ignore-disable-comments` and `--editor-mode` change what a run reports (suppressed
+/// offenses; Metrics ranges, Lint/Syntax messages, [Correctable]), so like RuboCop's
+/// relevant_options_digest they key the cache: a warm run with either flag, after a run without
+/// it (and the other way round), prints what `--cache false` prints.
+#[test]
+fn output_changing_flags_key_the_cache() {
+    let dir = project("flags");
+    fs::write(
+        dir.join("lib/disabled.rb"),
+        "# frozen_string_literal: true\n\nx = 1 # rubocop:disable Lint/UselessAssignment\n",
+    )
+    .unwrap();
+    let body: String = (1..=11).map(|i| format!("  a{i} = {i}\n")).collect();
+    fs::write(dir.join("lib/long.rb"), format!("# frozen_string_literal: true\n\ndef m\n{body}  a1 + a11\nend\n"))
+        .unwrap();
+    for flag in ["--ignore-disable-comments", "--editor-mode"] {
+        for order in [[None, Some(flag)], [Some(flag), None]] {
+            let _ = fs::remove_dir_all(dir.join("cache-root"));
+            for step in order {
+                let args: Vec<&str> = ["-f", "json"].into_iter().chain(step).collect();
+                let base: Vec<&str> = ["--cache", "false"].into_iter().chain(args.iter().copied()).collect();
+                let warm = rbcop(&dir, &args);
+                assert_same(&rbcop(&dir, &base), &warm, &format!("{flag}: {args:?}"));
+            }
+        }
+    }
+    let _ = fs::remove_dir_all(&dir);
+}
+
+/// A file transcoded from its magic comment's encoding is cached as UTF-8 text the bytes on disk
+/// do not spell. Here a lossy reading of the ISO-8859-1 bytes `C3 A9 E9 E9` has the transcoded
+/// text's length (8 bytes) but other characters: a warm run must not place offsets in it.
+#[test]
+fn transcoded_source_is_never_rebuilt_from_its_length() {
+    let dir = project("transcoded");
+    fs::write(
+        dir.join("lib/latin1.rb"),
+        b"# encoding: iso-8859-1\n# frozen_string_literal: true\n\nputs \"\xC3\xA9\xE9\xE9\"  \n",
+    )
+    .unwrap();
+    let base = rbcop(&dir, &["--cache", "false", "-f", "emacs", "lib/latin1.rb"]);
+    assert!(
+        String::from_utf8_lossy(&base.stdout).contains("4:12: C: [Correctable] Layout/TrailingWhitespace"),
+        "{base:?}"
+    );
+    for run in ["cold", "warm"] {
+        assert_same(&base, &rbcop(&dir, &["-f", "emacs", "lib/latin1.rb"]), run);
+    }
+    let _ = fs::remove_dir_all(&dir);
+}

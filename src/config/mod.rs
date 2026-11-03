@@ -973,6 +973,12 @@ impl Store {
         &self.cwd
     }
 
+    /// TargetFinder#without_excluded's config: the file's own under `--ignore-parent-exclusion`,
+    /// the working directory's otherwise.
+    pub fn for_exclusion(&mut self, file: &Path) -> Result<Arc<Resolved>, String> {
+        if self.opts.ignore_parent_exclusion { self.for_file(file) } else { self.for_dir(&self.cwd.clone()) }
+    }
+
     /// Version.parser_version's ConfigLoader.load_yaml_configuration of the config file found from
     /// the working directory (not `-c`), which `-d` names.
     pub fn debug_pwd_yaml(&mut self) {

@@ -42,18 +42,25 @@ pub fn find(
             }
         } else {
             // TargetFinder#process_explicit_path (a missing file too: the caller fails reading it):
-            // included_file? under either option, then
-            // without_excluded under --force-exclusion. included_file? comes first: for an
-            // extensionless file ruby_executable? loads the file's directory config, excluded or not.
-            if force_exclusion || only_recognized {
-                let cfg = store.for_dir(&cwd)?;
-                if !(ruby.is(&abs, store)? || cfg.file_to_include(&abs))
-                    || (force_exclusion && cfg.file_to_exclude(&abs))
-                {
+            // `Dir[path]` when the argument has a `*` (a quoted glob; no match is no file), then
+            // included_file? under either option, then without_excluded under --force-exclusion.
+            // included_file? comes first: for an extensionless file ruby_executable? loads the
+            // file's directory config, excluded or not.
+            let text = arg.to_string_lossy();
+            let candidates = if text.contains('*') {
+                glob::dir_glob(&text, &cwd).iter().map(|p| expand_path(Path::new(p), &cwd)).collect()
+            } else {
+                vec![abs]
+            };
+            for abs in candidates {
+                if (force_exclusion || only_recognized) && !(ruby.is(&abs, store)? || pwd_cfg.file_to_include(&abs)) {
                     continue;
                 }
+                if force_exclusion && store.for_exclusion(&abs)?.file_to_exclude(&abs) {
+                    continue;
+                }
+                files.push(abs);
             }
-            files.push(abs);
         }
     }
     let mut seen = std::collections::HashSet::new();

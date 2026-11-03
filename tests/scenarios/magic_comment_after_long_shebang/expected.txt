@@ -1,0 +1,4 @@
+Gemfile:1:1: W: Lint/EmptyFile: Empty file detected.
+long.rb:1:1: W: Lint/ScriptPermission: Script file long.rb doesn't have execute permission.
+long.rb:5:10: C: [Correctable] Layout/TrailingWhitespace: Trailing whitespace detected.
+long.rb:5:6: C: [Correctable] Style/StringLiterals: Prefer single-quoted strings when you don't need string interpolation or special symbols.

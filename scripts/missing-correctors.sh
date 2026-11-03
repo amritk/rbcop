@@ -5,8 +5,11 @@
 # ponytail: helper granularity is the file, so a cop using such a helper only for non-corrector
 # functions is hidden too; match helper function names if that starts to matter.
 # usage: scripts/missing-correctors.sh   (prints a comma-separated cop list)
+set -eu
 cd "$(dirname "$0")/.."
 fixing=$(grep -l add_fix src/helpers/*.rs | sed 's|src/helpers/\(.*\)\.rs|\1|' | paste -sd'|' -)
+# An empty list would make `helpers::()\b` match every cop that uses any helper, hiding them all.
+[ -n "$fixing" ] || { echo "missing-correctors: no helper calls add_fix" >&2; exit 1; }
 for f in src/cops/*/*.rs; do
   if grep -q "fn correctable" "$f" && ! grep -q "add_fix" "$f" && ! grep -q "^ *// corrector: " "$f" \
     && ! grep -Eq "helpers::($fixing)\b" "$f"; then

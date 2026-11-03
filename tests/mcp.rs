@@ -143,6 +143,40 @@ fn mcp_tools_refuse_version_control_metadata() {
     std::fs::remove_dir_all(&dir).unwrap();
 }
 
+/// Deliberate difference: the tools never write configuration rbcop would evaluate (YAML, whose
+/// ERB `ruby` renders, and `.rubocop`), so a write cannot become code execution on the next call.
+/// Ruby files (Gemfile and gemspecs included, as RuboCop corrects them) are still written.
+#[test]
+fn mcp_tools_refuse_to_write_evaluated_config() {
+    let dir = std::env::temp_dir().join(format!("rbcop-mcp-config-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&dir);
+    std::fs::create_dir_all(dir.join("spec")).unwrap();
+    let dir = dir.canonicalize().unwrap();
+    let erb = r#""x: <%= File.write('pwned', '') %>\n""#;
+    let paths = ["spec/.rubocop.yml", ".rubocop_todo.yml", "config/base.YAML", ".rubocop"];
+    let mut requests: Vec<String> = paths
+        .iter()
+        .enumerate()
+        .map(|(i, p)| {
+            tool_call(i as u32 + 1, "autocorrection", &format!(r#"{{"path":"{p}","source_code":{erb},"safety":true}}"#))
+        })
+        .collect();
+    requests.push(tool_call(99, "autocorrection", r#"{"path":"spec/a.rb","source_code":"puts( 1)\n","safety":true}"#));
+    requests.push(tool_call(100, "inspection", r#"{"path":"spec/a.rb"}"#));
+    let lines = mcp(&dir, &[], &requests);
+    assert_eq!(lines.len(), requests.len(), "{lines:?}");
+    for line in &lines[..paths.len()] {
+        assert!(line.contains("\"isError\":true") && line.contains("rbcop would evaluate"), "{line}");
+    }
+    for p in paths {
+        assert!(!dir.join(p).exists(), "{p} was written");
+    }
+    assert!(!dir.join("pwned").exists() && !dir.join("spec/pwned").exists());
+    assert!(!lines[paths.len()].contains("\"isError\":true"), "{}", lines[paths.len()]);
+    assert_eq!(std::fs::read_to_string(dir.join("spec/a.rb")).unwrap(), "puts(1)\n");
+    std::fs::remove_dir_all(&dir).unwrap();
+}
+
 /// A scratch directory for the git hardening tests: `repo/` (canonical), a global git config with
 /// an identity, and a hook script that creates `ran` when anything executes it.
 struct GitScratch {

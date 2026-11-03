@@ -1972,7 +1972,7 @@ fn run(mut cli: Cli, global: bool, parse_color: bool, phase: Option<u8>) -> Resu
             let mut buf = Vec::new();
             std::io::stdin().read_to_end(&mut buf).map_err(|e| e.to_string())?;
             let abs = expand_path(Path::new(name), &cwd);
-            let excluded = cli.force_exclusion && store.for_dir(&cwd)?.file_to_exclude(&abs);
+            let excluded = cli.force_exclusion && store.for_exclusion(&abs)?.file_to_exclude(&abs);
             if !excluded {
                 files.push(abs);
             }
@@ -1982,7 +1982,13 @@ fn run(mut cli: Cli, global: bool, parse_color: bool, phase: Option<u8>) -> Resu
             let args = if cli.paths.is_empty() { vec![PathBuf::new()] } else { cli.paths.clone() };
             for arg in args {
                 let abs = expand_path(&arg, &cwd);
-                if !arg.as_os_str().is_empty() && !abs.exists() {
+                // A quoted glob, and a missing file under --force-exclusion or
+                // --only-recognized-file-types, go through TargetFinder (which may drop them).
+                if !arg.as_os_str().is_empty()
+                    && !abs.exists()
+                    && !arg.to_string_lossy().contains('*')
+                    && !(cli.force_exclusion || cli.only_recognized)
+                {
                     files.push(abs);
                     continue;
                 }
@@ -2208,7 +2214,7 @@ fn run(mut cli: Cli, global: bool, parse_color: bool, phase: Option<u8>) -> Resu
         let schema = cwd.ancestors().find_map(|d| fs::read(d.join("db/schema.rb")).ok());
         let index = rbcop::project_index::get().map(|ix| cache::digest(&[ix.signature().as_bytes()]));
         let context = format!(
-            "{}|{only:?}|{except:?}|{}|{}|{}|{:?}|{}|{}",
+            "{}|{only:?}|{except:?}|{}|{}|{}|{}|{}|{:?}|{}|{}",
             // CachedData keeps Offense#corrections. rbcop records them only for the JSON
             // formatter (recording them on every run costs a warm run ~40% more CPU on rails),
             // so entries with and without them live apart: a JSON run never loads an entry
@@ -2216,6 +2222,10 @@ fn run(mut cli: Cli, global: bool, parse_color: bool, phase: Option<u8>) -> Resu
             rbcop::cop::recording_edits(),
             cli.only_guide,
             runner::display_suppressed(),
+            // Both change what is stored (suppressed offenses; messages, ranges and
+            // [Correctable] under editor mode) and are in RuboCop's relevant_options_digest.
+            rbcop::directives::ignoring_disable_comments(),
+            rbcop::helpers::lsp::enabled(),
             cwd.display(),
             store.loaded_plugins(),
             schema.map(|s| cache::digest(&[&s])).unwrap_or_default(),

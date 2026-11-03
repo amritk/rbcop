@@ -513,7 +513,10 @@ impl Server {
         scope: &Scope,
     ) -> Result<String, ToolFail> {
         let file = path.unwrap_or("example.rb");
-        self.contain(file)?;
+        let real = self.contain(file)?;
+        if path.is_some() && !request.dry_run && runs_code_when_loaded(&real) {
+            return Err(refuse_evaluated(file, &real));
+        }
         let options = request.runtime_options(scope);
         let run = self.runtime.format_run(file, source.to_string(), request.safety, &options)?;
         let abs = expand_path(Path::new(file), &self.runtime.cwd);
@@ -626,6 +629,9 @@ impl Server {
     /// are RuboCop::Errors. Through autocorrect::write_source as `-a` writes, never via a symlink.
     fn write_file(&self, path: &str, content: &str) -> Result<(), ToolFail> {
         let real = self.contain(path)?;
+        if runs_code_when_loaded(&real) {
+            return Err(refuse_evaluated(path, &real));
+        }
         if real.is_file() && std::fs::read(&real).is_ok_and(|b| b == content.as_bytes()) {
             return Ok(());
         }
@@ -647,6 +653,23 @@ impl Server {
             _ => ToolFail::Other(errno(&e, path)),
         })
     }
+}
+
+/// Deliberate difference: configuration the next tool call would evaluate rather than lint, so a
+/// client (possibly a model following text from the code it reads) cannot turn a write into code
+/// execution: YAML (`.rubocop*.yml` and anything one inherits from, its ERB rendered by `ruby`)
+/// and the `.rubocop` options file. Ruby files, Gemfile and gemspecs included, are linted and
+/// corrected as RuboCop corrects them.
+fn runs_code_when_loaded(path: &Path) -> bool {
+    let name = path.file_name().map(|n| n.to_string_lossy().to_ascii_lowercase()).unwrap_or_default();
+    name.ends_with(".yml") || name.ends_with(".yaml") || name == ".rubocop"
+}
+
+fn refuse_evaluated(path: &str, real: &Path) -> ToolFail {
+    ToolFail::Rubo(format!(
+        "{path} resolves to {}, a configuration file rbcop would evaluate; not written",
+        real.display()
+    ))
 }
 
 /// AutocorrectionRequest::DEFAULT_MAX_OFFENSES_PER_COP

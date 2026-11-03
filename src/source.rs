@@ -57,6 +57,9 @@ pub struct Source<'a> {
     /// Below 3.3, in a file with a `\` line continuation: the offsets of the parser gem's tNL
     /// tokens (`legacy_syntax::newline_offsets`), whose lines count as code for CommentConfig.
     pub gem_newlines: Vec<usize>,
+    /// Below 3.3: trailing comments with no tNL after them in the parser gem's token stream
+    /// (legacy_syntax::comments_without_newline), by start offset.
+    pub gem_silent_comments: Vec<usize>,
     /// The program the cops run on (set by runner::analyze): node_equality finds nodes by range in it.
     pub root: Option<ruby_prism::Node<'a>>,
     /// `root`'s nodes by range (node_equality::node_at).
@@ -106,6 +109,7 @@ impl<'a> Source<'a> {
             lex_edits: Vec::new(),
             numbered_sends: Vec::new(),
             gem_newlines: Vec::new(),
+            gem_silent_comments: Vec::new(),
             root: None,
             nodes_by_range: OnceCell::new(),
             lex_end: data_start.filter(|&d| !text[d..].starts_with("__END__")).unwrap_or(text.len()),
@@ -331,7 +335,11 @@ pub enum Reencoded {
 
 /// Parser::Source::Buffer.reencode_string (recognize_encoding's Encoding.find, then String#encode).
 pub fn reencode(bytes: Vec<u8>) -> Reencoded {
-    let head = String::from_utf8_lossy(&bytes[..bytes.len().min(1024)]);
+    // recognize_encoding reads the first two lines whatever their length (a long shebang line
+    // still leaves the comment on line 2); nothing after them can matter.
+    let mut newlines = bytes.iter().enumerate().filter(|&(_, &b)| b == b'\n').map(|(i, _)| i + 1);
+    let two_lines = newlines.nth(1).unwrap_or(bytes.len());
+    let head = String::from_utf8_lossy(&bytes[..two_lines]);
     let Some(name) = magic_encoding(&head).map(str::to_string) else { return Reencoded::AsIs(bytes) };
     let Some(enc) = crate::encoding::find(&name) else {
         // Encoding.find("internal") is nil (no default internal encoding): nothing is transcoded.

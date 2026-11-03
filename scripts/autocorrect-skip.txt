@@ -1,6 +1,7 @@
-# Corpus files (corpus/relative/path) the autocorrect gates skip because RuboCop 1.91 itself
-# crashes on them under -A, aborting the rest of its run, or writes a syntax error that rbcop
-# deliberately does not reproduce. Keep this list minimal and explain each.
+# Corpus files (corpus/relative/path) the autocorrect gates skip because RuboCop itself crashes on
+# them under -A, aborting the rest of its run, or writes a syntax error that rbcop deliberately does
+# not reproduce. Keep this list minimal and explain each. Entries were confirmed with RuboCop 1.91;
+# re-check them on each upgrade (docs/upgrading-rubocop.md).
 #
 # Style/WordArray writes invalid-UTF-8 string values back as raw bytes; RuboCop's formatter then
 # raises "invalid byte sequence in UTF-8" (rbcop writes the escaped form, see docs/known-gaps.md).

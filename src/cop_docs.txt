@@ -9147,6 +9147,11 @@ L
 L It is more likely that the additional characters are unintended (for
 L example, mistranslating an array of literals to percent string notation)
 L rather than meant to be part of the resulting strings.
+L 
+L When a quoted string contains whitespace, `%w` splits it into separate values,
+L so removing the quotes would not restore the intended string.
+L Such an array is corrected to an array literal instead, as long as its content
+L reads as one with only string elements.
 S Safety
 L   The cop is unsafe because the correction changes the values in the array
 L   and that might have been done purposely.
@@ -9162,6 +9167,12 @@ L   %w('foo', "bar")
 L 
 L   # good
 L   %w(foo bar)
+L 
+L   # bad - the quoted strings are split at whitespace
+L   %w('foo bar', 'baz')
+L 
+L   # good
+L   ['foo bar', 'baz']
 C Lint/PercentSymbolArray
 S Details
 L Checks for colons and commas in %i, e.g. `%i(:foo, :bar)`
@@ -24037,7 +24048,7 @@ L Checks for uses of the case equality operator (`===`).
 L The `===` operator has different behavior depending on the
 L receiver and its use outside of `case`/`when` is confusing.
 L Prefer more explicit alternatives like `is_a?`, `include?`,
-L or `match?`.
+L `cover?`, or `match?`.
 L 
 L If `AllowOnConstant` option is enabled, the cop will ignore violations when the receiver of
 L the case equality operator is a constant.
@@ -24051,9 +24062,11 @@ L This potentially incompatible transformation is handled by `Performance/Regexp
 S Example
 L   # bad
 L   (1..100) === 7
+L   ('a'..'z') === char
 L 
 L   # good
 L   (1..100).include?(7)
+L   ('a'..'z').cover?(char)
 S Example: AllowOnConstant: false (default)
 L   # bad
 L   Array === something

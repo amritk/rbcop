@@ -43,7 +43,7 @@ Then measure what reaches real code: record the new release's oracles into scrat
 gate's oracle dirs) and rerun the script with both oracle dirs:
 
     for c in specs rails discourse rubocop-src jekyll chef fastlane brew mastodon; do
-      RUBOCOP="$NEW" scripts/oracle.sh $RBCOP_CORPUS/$c $S/oracle/$c.txt
+      RUBOCOP="$NEW" RUBOCOP_EXPECTED=X.Y.Z scripts/oracle.sh $RBCOP_CORPUS/$c $S/oracle/$c.txt
     done
     ruby scripts/rubocop_delta.rb $OLD $S/gems/gems/rubocop-X.Y.Z notes.md $RBCOP_ORACLE $S/oracle > delta.tsv
 
@@ -51,7 +51,8 @@ gate's oracle dirs) and rerun the script with both oracle dirs:
 columns count (cop, file) pairs whose RuboCop errors were fixed or introduced. Rows with corpus
 changes are the ones the gate will catch; rows with only source or notes changes need the spec
 corpus (step 4) and targeted cases to catch. Commit the final `delta.tsv` and `delta-lib.txt` as
-`docs/upgrade-X.Y.Z.tsv` and `docs/upgrade-X.Y.Z-lib.tsv` and work from them.
+`docs/upgrade-X.Y.Z.tsv` and `docs/upgrade-X.Y.Z-lib.tsv` and work from them (they move to
+`docs/history/` with the worklist once the upgrade merges).
 
 ## 3. Port
 
@@ -67,13 +68,18 @@ corpus (step 4) and targeted cases to catch. Commit the final `delta.tsv` and `d
 - Regenerated tables: `src/autocorrect/registry.tsv` (`scripts/autocorrect_registry.rb`, registry
   order and `autocorrect_incompatible_with`), `src/helpers/ruby_exceptions.rs`
   (`scripts/dump-ruby-exceptions.rb`), `src/helpers/nil_methods.rs` and the display width table when
-  their gems move.
+  their gems move, and `src/cop_docs.txt` (what `--explain` prints: `LC_ALL=C.UTF-8 ruby
+  scripts/dump-cop-docs.rb > src/cop_docs.txt` with the new release and the plugin pins of
+  docs/plugins.md on the load path). 1.92.2 changed only the docs of Lint/PercentStringArray and
+  Style/CaseEquality, and the 1.92.2 upgrade missed them.
 - Behaviour the new release drops on purpose may already be listed in docs/known-gaps.md as a
   difference from the old one: re-check every entry that names the old version.
 
 ## 4. Re-record
 
-All with `RUBOCOP="$NEW"`, so nothing records with the old release by accident:
+All with `RUBOCOP="$NEW"` (and `RUBOCOP_EXPECTED=X.Y.Z` until `RUBOCOP_VERSION` in
+`src/config/mod.rs` names the new release: `scripts/rubocop.sh` refuses any other version), so
+nothing records with the old release by accident:
 
 - `tests/spec_corpus`: `scripts/record-spec-corpus.sh <rubocop-src checkout at vX.Y.Z>` (clone into
   scratch, `git -C <dir> checkout vX.Y.Z`; the corpus copy of rubocop-src stays as it is).
@@ -112,71 +118,18 @@ check-cops corpus at diff 0, the cold corpus and `cargo test` green, the corpus2
 Then also run `scripts/check-autocorrect-all.sh` with the new release, since -A output moves with
 almost every bug-fix release.
 
-## Done: 1.92.1 to 1.92.2 (#704)
+## Gate environment for a new release
 
-Inventory taken 2026-10-29 (`docs/upgrade-1.92.2.tsv`, `docs/upgrade-1.92.2-lib.tsv`, release notes
-of 1.92.2: 55 entries, all bug fixes and two behaviour changes). No new, removed or renamed cops;
-`config/default.yml` and `config/obsoletion.yml` are unchanged. 30 cop files and 10 other lib files
-change (five mixins and correctors, the runner's redundant-disable input, the renamed-cop config
-warning, obsolete plugin config warnings). On the nine corpora five cops report differently (50
-offenses gone, 3 new, no crash changes; Layout/SpaceAroundOperators is 47 of them). Plugin pins are
-unaffected. The integration branch is `feat/rubocop-1.92.2`; its worklist and batches are
-docs/upgrade-1.92.2-status.md.
+On the CI host each release gets its own gem home (`~/rubocop-X.Y.Z/gems`, the previous set with
+only rubocop replaced, every gem installed with `gem install --ignore-dependencies -v <version>`),
+a wrapper `~/rubocop-X.Y.Z/bin/rubocop` that sets `GEM_HOME`/`GEM_PATH` (use it as `RUBOCOP`), and
+its own oracle root with the old root's layout. The CI runner picks the root from the tree's
+`RUBOCOP_VERSION`, so the upgrade branch gates against the new release while every other branch
+keeps the old one, and fails before starting for an unknown version or a root without `.recorded`.
+The recording scripts also need the `mcp` and `rubydex` gems the MCP and project-index tests pin.
+The CI host's own setup (paths, `ci-run.sh`) is in rbcop-ops.
 
-### Gate environments for 1.92.2
+## Past upgrades
 
-As for 1.92.1 below, with `1.92.2` in every name: `~/rubocop-1.92.2/gems` is a copy of the 1.92.1
-gem home with rubocop 1.92.1 replaced by 1.92.2 (`gem install --ignore-dependencies --local`; the
-gemspec's dependency minimums did not move, so every other gem stays at the version the 1.92.1 set
-pins), `~/rubocop-1.92.2/bin/rubocop` is the wrapper, `~/rubocop-1.92.2/record-oracles.sh` records
-the root `/Users/johncosta/.claude/jobs/89c7fab2/tmp-1.92.2/`, and `ci-run.sh` has a `1.92.2` case.
-The recording scripts in step 4 also need mcp 0.25.0 and rubydex 0.4.1 on `GEM_PATH`
-(`~/rubocop-1.92.2/extra-gems` on CT 440, a separate gem home: put it first in `GEM_PATH`).
-
-## Done: 1.91.0 to 1.92.1 (#703)
-
-Inventory taken 2026-10-25 (`docs/upgrade-1.92.1.tsv`, `docs/upgrade-1.92.1-lib.tsv`, release notes
-of 1.92.0 and 1.92.1: about 440 entries). No new or removed cops; `config/default.yml` changes three
-entries (Style/CollectionQuerying and Style/DisableCopsWithinSourceCodeDirective get
-`VersionChanged: '1.92'`, Style/NegativeArrayIndex becomes `Safe: false`). 178 cop files and 82
-other lib files change. On the nine corpora, 43 cops report differently (2,878 offenses gone, 457
-new, 8 RuboCop crashes fixed); the largest are Style/MissingElse (2,112 gone), Style/HashLookupMethod
-(257 gone), Style/CollectionQuerying, Layout/ClassStructure, Style/SymbolProc,
-Layout/MultilineMethodCallIndentation and Lint/UselessAssignment. Outside cops: `--explain`,
-`--max-offenses-per-cop`, JSON formatter fields for corrections and per-file errors, new MCP tools
-and options, and runner, cache, LSP and target-Ruby lookup changes. Plugin pins are unaffected
-(rubocop-capybara moved to 3.1.0, `rubocop ~> 1.89`, in #673).
-
-The integration branch is `feat/rubocop-1.92.1` (version bumped, everything re-recorded); its
-port worklist, with the failing tests, per-cop corpus diffs and the port batches, is
-docs/upgrade-1.92.1-status.md.
-
-### Gate environments for 1.92.1
-
-The integration branch for #299 bumps `RUBOCOP_VERSION` to 1.92.1 first and gates against the new
-release from then on; master and every other branch keep gating against 1.91.0. On the CI host:
-
-- RuboCop 1.92.1 lives in its own gem home, `~/rubocop-1.92.1/gems`, with exactly the gem versions
-  the 1.91.0 set activates (rubocop-ast 1.50.0, parser 3.3.12.0, prism 1.9.0, regexp_parser 2.13.1,
-  unicode-display_width 3.3.0, ...) and the same plugin pins (docs/plugins.md, plus rubocop-i18n
-  3.3.0 for mastodon's own config); every plugin pin accepts 1.92.1. Each gem went in with
-  `gem install --ignore-dependencies -v <version>`, so nothing resolves outside that list. The
-  rbenv 4.0.6 gem set is unchanged and still holds 1.91.0.
-- `~/rubocop-1.92.1/bin/rubocop` is the wrapper: it sets `GEM_HOME`/`GEM_PATH` to that gem home and
-  runs RuboCop on rbenv 4.0.6. Use it as `RUBOCOP=~/rubocop-1.92.1/bin/rubocop` for every recording
-  script (step 4).
-- The 1.92.1 oracle root is `/Users/johncosta/.claude/jobs/89c7fab2/tmp-1.92.1/`, next to the
-  1.91.0 root (`.../tmp/`) and with the same layout: `oracle2` (nine corpora and `cold.txt`),
-  `oracle3` (corpus2 projects), `oracle-performance`, `oracle-rails`, `oracle-minitest`,
-  `oracle-rspec` (with `mastodon-project.txt`). The corpora stay in `.../tmp/` and are shared.
-  `~/rubocop-1.92.1/record-oracles.sh <rbcop tree>` records the whole root with the scripts above
-  and writes `.recorded` last.
-- `ci-run.sh` (rbcop-ops `rbcop-ci/ci-run.sh.ct440`) reads `RUBOCOP_VERSION` from the synced tree's
-  `src/config/mod.rs` and prints it as the first gate line, `target: rubocop X.Y.Z`. For 1.91.0
-  nothing changes. For 1.92.1 it uses the 1.92.1 root and exports `RUBOCOP` (the scripts' live
-  RuboCop), `RBCOP_RUBOCOP` (rbcop's fallback) and `GEM_HOME`/`GEM_PATH` (so `rubocop` on PATH,
-  used by `tests/fallback.rs`, and rbcop's own gem lookups resolve to the 1.92.1 set). Any other
-  version, or a root without `.recorded`, fails the gate before it starts.
-
-When the upgrade merges, 1.92.1 becomes master's target with no further switch; the 1.91.0 entry
-and root can go once no open branch still targets it.
+docs/history/rubocop-upgrades.md has each upgrade's inventory summary and gate environment;
+its worklists and delta inventories are `docs/history/upgrade-X.Y.Z*`.

@@ -1,0 +1,20 @@
+Gemfile:1:1: W: Lint/EmptyFile: Empty file detected.
+a.rb:10:1: C: Style/CombinableLoops: Combine this loop with the previous loop.
+a.rb:3:17: W: [Correctable] Lint/UnusedBlockArgument: Unused block local variable - `y`.
+a.rb:3:1: C: [Correctable] Style/HashEachMethods: Use `each_key` instead of `each` and remove the unused `y` block argument.
+a.rb:6:13: W: [Correctable] Lint/UnusedBlockArgument: Unused block argument - `x`. If it's necessary, use `_` or `_x` as an argument name to indicate that it won't be used.
+a.rb:6:14: C: [Correctable] Style/Semicolon: Do not use semicolons to terminate expressions.
+a.rb:6:1: C: [Correctable] Style/CombinableLoops: Combine this loop with the previous loop.
+a.rb:6:1: C: [Correctable] Style/HashEachMethods: Use `each_value` instead of `each` and remove the unused `x` block argument.
+a.rb:6:24: C: [Correctable] Style/Semicolon: Do not use semicolons to terminate expressions.
+a.rb:7:13: C: [Correctable] Layout/SpaceAroundBlockParameters: Space before first block parameter detected.
+a.rb:7:18: W: [Correctable] Lint/UnusedBlockArgument: Unused block local variable - `b`.
+a.rb:7:1: C: Style/CombinableLoops: Combine this loop with the previous loop.
+a.rb:7:1: C: [Correctable] Style/HashEachMethods: Use `each_key` instead of `each` and remove the unused `b` block argument.
+a.rb:8:13: C: [Correctable] Layout/SpaceAroundBlockParameters: Space before first block parameter detected.
+a.rb:8:15: W: [Correctable] Lint/UnusedBlockArgument: Unused block local variable - `a`.
+a.rb:8:18: W: [Correctable] Lint/UnusedBlockArgument: Unused block local variable - `b`.
+a.rb:8:1: C: [Correctable] Style/CombinableLoops: Combine this loop with the previous loop.
+a.rb:9:16: W: [Correctable] Lint/UnusedBlockArgument: Unused block argument - `v`. If it's necessary, use `_` or `_v` as an argument name to indicate that it won't be used.
+a.rb:9:19: W: [Correctable] Lint/UnusedBlockArgument: Unused block local variable - `z`.
+a.rb:9:1: C: Style/CombinableLoops: Combine this loop with the previous loop.

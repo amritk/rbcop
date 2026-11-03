@@ -69,7 +69,9 @@ for c in $cops; do
     rel=${v#"$corpus"/}
     for side in rubocop rbcop; do
       mkdir -p "$out/ac/$side/$rel"
-      cp -R "$v/" "$out/ac/$side/$rel/"
+      # `$v/.`: the variant's contents. GNU cp copies `$v/` itself into the destination (BSD cp
+      # copies its contents), which left both tools without a .rubocop.yml and nothing to compare.
+      cp -R "$v/." "$out/ac/$side/$rel/"
       (cd "$out/ac/$side" && xargs rm -f < "$out/skip.rel")
     done
     (cd "$out/ac/rubocop/$rel" && rubocop -A --only "$cop" --config .rubocop.yml --cache false --format emacs . \
