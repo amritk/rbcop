@@ -64,6 +64,9 @@ worktree's `.gitattributes` still apply. Those are files the user, not an MCP cl
 
 ## Deliberate differences from RuboCop
 
+- The JSON formatter's `metadata` names Ruby 4.0.6 (`ruby_version`, `ruby_patchlevel` 0), the Ruby
+  rbcop's RuboCop recordings use (`.ruby-version`): rbcop runs no Ruby to ask. `ruby_platform` is
+  the running OS's.
 - `-o/--out` pointing at a file being inspected is refused (RuboCop truncates the file).
 - `-o/--out` (or anything that could become it) in a `.rubocop` arguments file is refused.
 - `-a`/`-A` never write a file whose canonical path (symlinks resolved) is outside the canonical

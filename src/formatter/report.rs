@@ -7,7 +7,8 @@ use std::collections::HashMap;
 use std::fmt::Write as _;
 use std::path::{Path, PathBuf};
 
-/// RUBY_ENGINE / RUBY_VERSION / RUBY_PATCHLEVEL of the Ruby that RuboCop 1.91.0 is checked against.
+/// RUBY_ENGINE / RUBY_VERSION / RUBY_PATCHLEVEL of the Ruby rbcop's RuboCop recordings use (the
+/// repo's .ruby-version; docs/known-gaps.md).
 const RUBY_VERSION: &str = "4.0.6";
 const RUBY_PATCHLEVEL: &str = "0";
 

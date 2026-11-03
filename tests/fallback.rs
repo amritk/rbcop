@@ -392,7 +392,11 @@ fn same(dir: &Path, env: &[(&str, &str)], args: &[&str]) {
     }
     let ours = ours.args(args).current_dir(dir).output().unwrap();
     let theirs = theirs.args(args).current_dir(dir).output().unwrap();
-    assert_eq!(text(&ours.stdout), text(&theirs.stdout), "{env:?} {args:?}");
+    // The JSON formatter's metadata names the Ruby RuboCop runs on; rbcop names the one its
+    // recordings use (docs/known-gaps.md), so a RuboCop on another Ruby differs only there.
+    let ruby = regex::Regex::new(r#""ruby_version":"[^"]*","ruby_patchlevel":"[^"]*""#).unwrap();
+    let stdout = |o: &Output| ruby.replace_all(&text(&o.stdout), "RUBY").into_owned();
+    assert_eq!(stdout(&ours), stdout(&theirs), "{env:?} {args:?}");
     assert_eq!(text(&ours.stderr), text(&theirs.stderr), "{env:?} {args:?}");
     assert_eq!(ours.status.code(), theirs.status.code(), "{env:?} {args:?}");
 }
