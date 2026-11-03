@@ -11,8 +11,9 @@ exit status). `README.md` covers install, usage, parity and speed.
   `cargo clippy --release --all-targets -- -D warnings`, `cargo build --release`,
   `cargo test --release`. With `RBCOP_CORPUS` and `RBCOP_ORACLE` set it also runs
   `check-cops.sh all`, `check-cold.sh` and `check-plugins.sh`. Prints `ci: ok at <sha>`.
-- There is no PR CI workflow. `.github/workflows/release.yml` is `workflow_dispatch`
-  only. Run `scripts/ci.sh` before pushing.
+- `.github/workflows/ci.yml` runs the fast tier of `scripts/ci.sh` on pull requests and pushes
+  to master; the corpus tier runs only on the CI host. `.github/workflows/release.yml` is
+  `workflow_dispatch` only. Run `scripts/ci.sh` before pushing.
 - `cargo test` replays recorded RuboCop output (`tests/spec_corpus`, `tests/scenarios`,
   `tests/formatters`, `tests/show_cops`, `tests/autocorrect`). Recording scripts and
   the oracle/cold/autocorrect gates need RuboCop 1.92.2 on PATH
