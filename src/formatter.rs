@@ -373,22 +373,74 @@ pub fn cop_urls(cfg: &Resolved, cop: &str) -> Vec<String> {
     urls
 }
 
-/// URI.join for the shapes style guide links take.
+/// URI.join: RFC 3986 reference resolution (section 5.2), dot segments removed.
 fn uri_join(base: &str, url: &str) -> String {
-    if url.contains("://") {
+    // A reference with a scheme (`https://z`, `x:y`) stands alone.
+    let scheme_end = url.find(':').filter(|&i| {
+        i > 0
+            && url.as_bytes()[0].is_ascii_alphabetic()
+            && url[..i].bytes().all(|b| b.is_ascii_alphanumeric() || matches!(b, b'+' | b'-' | b'.'))
+    });
+    if scheme_end.is_some() {
         return url.to_string();
     }
-    let origin_end = base.find("://").and_then(|i| base[i + 3..].find('/').map(|j| i + 3 + j)).unwrap_or(base.len());
-    if let Some(frag) = url.strip_prefix('#') {
-        return format!("{}#{frag}", base.split('#').next().unwrap_or(base));
+    // base = scheme ":" "//" authority path ["?" query]; its fragment never carries over.
+    let base = base.split('#').next().unwrap_or(base);
+    let (scheme, rest) = base.split_once("://").map_or(("", base), |(s, r)| (s, r));
+    let authority_end = rest.find(['/', '?']).unwrap_or(rest.len());
+    let (authority, rest) = rest.split_at(authority_end);
+    let (base_path, base_query) = rest.split_once('?').map_or((rest, None), |(p, q)| (p, Some(q)));
+    let (reference, fragment) = url.split_once('#').map_or((url, None), |(r, f)| (r, Some(f)));
+    let (ref_path, ref_query) = reference.split_once('?').map_or((reference, None), |(p, q)| (p, Some(q)));
+    let (authority, path, query) = if let Some(other) = ref_path.strip_prefix("//") {
+        let end = other.find('/').unwrap_or(other.len());
+        (&other[..end], remove_dot_segments(&other[end..]), ref_query)
+    } else if ref_path.is_empty() {
+        (authority, base_path.to_string(), ref_query.or(base_query))
+    } else if ref_path.starts_with('/') {
+        (authority, remove_dot_segments(ref_path), ref_query)
+    } else {
+        // merge: the base path up to its last `/` (just `/` under an authority with no path).
+        let dir = match base_path.rfind('/') {
+            Some(i) => &base_path[..=i],
+            None if !authority.is_empty() => "/",
+            None => "",
+        };
+        (authority, remove_dot_segments(&format!("{dir}{ref_path}")), ref_query)
+    };
+    let mut out = if scheme.is_empty() { format!("//{authority}") } else { format!("{scheme}://{authority}") };
+    out.push_str(&path);
+    if let Some(q) = query {
+        out.push('?');
+        out.push_str(q);
     }
-    if url.starts_with('/') {
-        return format!("{}{url}", &base[..origin_end]);
+    if let Some(f) = fragment {
+        out.push('#');
+        out.push_str(f);
     }
-    let dir = base[origin_end..]
-        .rfind('/')
-        .map_or(format!("{}/", &base[..origin_end]), |i| base[..origin_end + i + 1].to_string());
-    format!("{dir}{url}")
+    out
+}
+
+/// RFC 3986 5.2.4: `.` and `..` segments resolved (`..` above the root is dropped).
+fn remove_dot_segments(path: &str) -> String {
+    let mut out: Vec<&str> = Vec::new();
+    let segments: Vec<&str> = path.split('/').collect();
+    for (i, seg) in segments.iter().enumerate() {
+        let last = i + 1 == segments.len();
+        match *seg {
+            "." | ".." => {
+                if *seg == ".." && out.len() > 1 {
+                    out.pop();
+                }
+                // A trailing `.`/`..` leaves the path ending in `/`.
+                if last {
+                    out.push("");
+                }
+            }
+            _ => out.push(seg),
+        }
+    }
+    out.join("/")
 }
 
 /// `--fail-level`.
@@ -865,5 +917,22 @@ mod tests {
         assert_eq!(uri_join("https://rubystyle.guide", "#x"), "https://rubystyle.guide#x");
         assert_eq!(uri_join("https://a.b/c/d", "e"), "https://a.b/c/e");
         assert_eq!(uri_join("https://a.b/c/d", "https://z"), "https://z");
+        // Ruby's URI.join on the same pairs.
+        for (base, url, want) in [
+            ("https://a.b/c/d", "../x", "https://a.b/x"),
+            ("https://a.b/c/d/", "../../x#f", "https://a.b/x#f"),
+            ("https://a.b/c/d", "?q=1", "https://a.b/c/d?q=1"),
+            ("https://a.b/c/d?p#f", "?q", "https://a.b/c/d?q"),
+            ("https://a.b/c/d?p#f", "#g", "https://a.b/c/d?p#g"),
+            ("https://a.b", "x", "https://a.b/x"),
+            ("https://a.b/c/d", "./x/./y/../z", "https://a.b/c/x/z"),
+            ("https://a.b/c/d", "/p/../q", "https://a.b/q"),
+            ("https://a.b/c/d", "//other.host/x", "https://other.host/x"),
+            ("https://a.b/c/d", "", "https://a.b/c/d"),
+            ("https://a.b/c/d", "../../../../x", "https://a.b/x"),
+            ("https://a.b/c/d", "x:y", "x:y"),
+        ] {
+            assert_eq!(uri_join(base, url), want, "{base} + {url}");
+        }
     }
 }
