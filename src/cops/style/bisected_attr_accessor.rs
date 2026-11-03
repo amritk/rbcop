@@ -102,6 +102,7 @@ impl Cop for BisectedAttrAccessor {
         if !cx.fixes.autocorrect || rewrites.is_empty() {
             return;
         }
+        // corrector: after_class merges its rewrites into cx.fixes.corrector (no add_fix).
         // after_class: corrections without an offense (`correct(range)`).
         let src = cx.src;
         for (i, bisected) in rewrites {

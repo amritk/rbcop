@@ -38,13 +38,17 @@ rebuild between committing the checksums and uploading.
          > packaging/checksums/X.Y.Z.sha256
        RBCOP_DOWNLOAD_BASE=file://$PWD/dist scripts/dist/install.sh X.Y.Z /tmp/b
 
-   Commit the file, then tag that commit `vX.Y.Z`.
-7. Publish (after review): `gh release create vX.Y.Z dist/*.tar.gz dist/rbcop.rb dist/gems/*.gem`,
-   `gem push` each gem, and copy `dist/rbcop.rb` into the tap.
+   Commit the file, then tag that commit and push the tag: `git tag vX.Y.Z <sha> && git push origin
+   vX.Y.Z`.
+7. Publish (after review): `gh release create vX.Y.Z --verify-tag dist/*.tar.gz dist/rbcop.rb
+   dist/gems/*.gem` (`--verify-tag` refuses to run without the pushed tag; otherwise gh would create
+   it from the default branch's tip, not the checksums commit), `gem push` each gem, and copy
+   `dist/rbcop.rb` into the tap.
 
 With the workflow (once public): run it with stage `build`; it attaches everything and a
 `SHA256SUMS` to a draft release. Commit that `SHA256SUMS` as `packaging/checksums/X.Y.Z.sha256`,
-publish the draft on that commit (which creates the tag), then run the workflow on the tag with
-stage `publish-gems`. Gems go out through RubyGems trusted publishing: register `release.yml`
+point the draft at that commit (`gh release edit vX.Y.Z --target <sha>`: the workflow creates it
+against the default branch, whose tip can be another commit by then), publish it (which creates the
+tag there), then run the workflow on the tag with stage `publish-gems`. Gems go out through RubyGems trusted publishing: register `release.yml`
 with environment `release` as a trusted publisher for the `rbcop` gem on rubygems.org (a pending
 publisher before the first push), and give the `release` environment a required reviewer.
