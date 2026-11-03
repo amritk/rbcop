@@ -335,7 +335,11 @@ pub enum Reencoded {
 
 /// Parser::Source::Buffer.reencode_string (recognize_encoding's Encoding.find, then String#encode).
 pub fn reencode(bytes: Vec<u8>) -> Reencoded {
-    let head = String::from_utf8_lossy(&bytes[..bytes.len().min(1024)]);
+    // recognize_encoding reads the first two lines whatever their length (a long shebang line
+    // still leaves the comment on line 2); nothing after them can matter.
+    let mut newlines = bytes.iter().enumerate().filter(|&(_, &b)| b == b'\n').map(|(i, _)| i + 1);
+    let two_lines = newlines.nth(1).unwrap_or(bytes.len());
+    let head = String::from_utf8_lossy(&bytes[..two_lines]);
     let Some(name) = magic_encoding(&head).map(str::to_string) else { return Reencoded::AsIs(bytes) };
     let Some(enc) = crate::encoding::find(&name) else {
         // Encoding.find("internal") is nil (no default internal encoding): nothing is transcoded.
