@@ -150,11 +150,10 @@ impl Cop for HashEachMethods {
             return;
         }
         let Some(params) = block.parameters().and_then(|p| p.as_block_parameters_node()) else { return };
-        if params.locals().iter().count() != 0 {
-            return;
-        }
-        let Some(p) = params.parameters() else { return };
-        let args = parameter_nodes(&p);
+        let mut args = params.parameters().map(|p| parameter_nodes(&p)).unwrap_or_default();
+        // Block-local variables (`|x; y|`) are shadowarg children of the parser gem's args node,
+        // so `(args $_key $_value)` also matches `|x; y|` and `|; a, b|`.
+        args.extend(params.locals().iter());
         let [key, value] = args.as_slice() else { return };
         let Some(body) = block.body() else { return };
         let mut lvars = Lvars::default();
