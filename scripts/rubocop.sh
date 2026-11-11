@@ -6,7 +6,16 @@
 rubocop_cmd=${RUBOCOP:-rubocop}
 # Scripts run RuboCop from temp dirs, where rbenv would not see the repo's .ruby-version: pin it.
 # No effect without rbenv.
-rubocop_root=$(cd "$(dirname "$0")/.." && pwd)
+# The repo root is the nearest directory above the sourcing script that holds Cargo.toml: scripts/
+# and tests/<dir>/ both source this file, so `$(dirname "$0")/..` is not always the root.
+rubocop_root=$(cd "$(dirname "$0")" && pwd)
+while [ ! -f "$rubocop_root/Cargo.toml" ]; do
+  if [ "$rubocop_root" = / ]; then
+    echo "$0: no Cargo.toml above $(dirname "$0"); cannot find the rbcop repo root" >&2
+    exit 1
+  fi
+  rubocop_root=$(dirname "$rubocop_root")
+done
 if [ -z "${RBENV_VERSION:-}" ] && [ -f "$rubocop_root/.ruby-version" ]; then
   RBENV_VERSION=$(cat "$rubocop_root/.ruby-version")
   export RBENV_VERSION
