@@ -97,6 +97,13 @@ pub fn pancestors(ancestors: &[Node], node: &Node) -> Vec<PAnc> {
                 continue;
             }
             kind::PARENTHESES_NODE | kind::EMBEDDED_STATEMENTS_NODE => PK::Begin,
+            // `^(expr)`: the parser gem has `(pin (begin expr))`.
+            kind::PINNED_EXPRESSION_NODE => {
+                let pin = a.as_pinned_expression_node().unwrap();
+                let (ls, re) = (pin.lparen_loc().start_offset(), pin.rparen_loc().end_offset());
+                out.push(PAnc { kind: PK::Begin, idx: i, start: ls, end: re });
+                PK::Other
+            }
             kind::BLOCK_NODE => {
                 let Some(owner) = parent else { continue };
                 out.push(PAnc { kind: block_kind(a), idx: i - 1, start: span(owner).0, end: e });
@@ -125,6 +132,26 @@ pub fn pancestors(ancestors: &[Node], node: &Node) -> Vec<PAnc> {
                 if let Some(b) = block {
                     out.push(PAnc { kind: block_kind(&b), idx: i, start: s, end: e });
                 }
+                continue;
+            }
+            // `in PATTERN if COND`: Prism wraps the pattern in an if/unless node, the parser gem
+            // has an `if_guard`/`unless_guard` (`if COND`) beside the pattern, which is no
+            // keyword ancestor.
+            kind::IF_NODE | kind::UNLESS_NODE if parent.is_some_and(|p| kind::of(p) == kind::IN_NODE) => {
+                let predicate = match a.as_if_node() {
+                    Some(n) => n.predicate(),
+                    None => a.as_unless_node().unwrap().predicate(),
+                };
+                let (ps, pe) = span(&predicate);
+                let inner = ancestors.get(i + 1).map_or_else(|| span(node), span);
+                if !within(inner, (ps, pe)) {
+                    continue;
+                }
+                let kw = match a.as_if_node() {
+                    Some(n) => n.if_keyword_loc().map_or(ps, |l| l.start_offset()),
+                    None => a.as_unless_node().unwrap().keyword_loc().start_offset(),
+                };
+                out.push(PAnc { kind: PK::Other, idx: i, start: kw, end: pe });
                 continue;
             }
             kind::IF_NODE | kind::UNLESS_NODE => PK::If,
