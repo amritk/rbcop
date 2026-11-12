@@ -1,0 +1,10 @@
+guards.rb:3:19: C: [Corrected] Layout/MultilineOperationIndentation: Use 2 (not 18) spaces for indenting an expression spanning multiple lines.
+guards.rb:9:15: C: [Corrected] Layout/MultilineOperationIndentation: Use 2 (not 14) spaces for indenting an expression spanning multiple lines.
+guards.rb:15:14: C: [Corrected] Layout/MultilineOperationIndentation: Use 2 (not 13) spaces for indenting an expression spanning multiple lines.
+guards.rb:24:17: C: [Corrected] Layout/MultilineMethodCallIndentation: Use 2 (not 16) spaces for indenting an expression spanning multiple lines.
+guards.rb:25:17: C: [Corrected] Layout/MultilineMethodCallIndentation: Use 2 (not 16) spaces for indenting an expression spanning multiple lines.
+keyword.rb:2:3: C: [Corrected] Layout/MultilineOperationIndentation: Align the operands of a condition in an `if` statement spanning multiple lines.
+keyword.rb:7:3: C: [Corrected] Layout/MultilineOperationIndentation: Align the operands of a condition in an `unless` statement spanning multiple lines.
+keyword.rb:12:3: C: [Corrected] Layout/MultilineOperationIndentation: Align the operands of a condition in a `while` statement spanning multiple lines.
+keyword.rb:17:3: C: [Corrected] Layout/MultilineOperationIndentation: Align the operands of a condition in a `return` statement spanning multiple lines.
+printed.rb:6:13: C: [Corrected] Layout/MultilineOperationIndentation: Use 2 (not 9) spaces for indenting an expression spanning multiple lines.
